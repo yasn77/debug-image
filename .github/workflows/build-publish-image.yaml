@@ -1,0 +1,136 @@
+#
+name: Create and publish a Docker image
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  image-metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      annotations: ${{ steps.meta.outputs.annotations }}
+      json: ${{ steps.meta.outputs.json }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=auto
+          tags: type=schedule
+            type=ref,event=branch
+  build-image:
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    strategy:
+      matrix:
+        platform: ["linux/amd64", "linux/arm64"]
+        include:
+          - platform: "linux/amd64"
+            runs-on: ubuntu-22.04
+          - platform: "linux/arm64"
+            runs-on: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runs-on }}
+    needs: image-metadata
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare
+        run: |
+          platform="${{ matrix.platform }}"
+          echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ needs.image-metadata.outputs.labels }}
+          annotations: ${{ needs.image-metadata.outputs.annotations }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.IMAGE_NAME }}-digests-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    needs:
+      - image-metadata
+      - build-image
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: ${{ env.IMAGE_NAME }}-digests-*
+          merge-multiple: true
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ needs.image-metadata.outputs.json }}') \
+            $(printf '${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Inspect image
+        id: inspect-image
+        run: |
+          ARTIFACT_NAME=$(basename ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.image-metadata.outputs.version }} | tr ':' '.').manifest.json
+          IMAGE_MANIFEST=$(docker buildx imagetools inspect --raw ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.image-metadata.outputs.version }})
+          DIGEST=$(echo -n "$IMAGE_MANIFEST" | sha256sum - | awk '{print $1}')
+          jq --arg digest "sha256:$DIGEST" '{"manifestDigest": $digest} + .' <<<$IMAGE_MANIFEST > "/tmp/${ARTIFACT_NAME}"
+          cat "/tmp/${ARTIFACT_NAME}"
+          echo "artifact-name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+      - name: Save manifest as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.inspect-image.outputs.artifact-name }}
+          path: /tmp/${{ steps.inspect-image.outputs.artifact-name }}
+          overwrite: "true"
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.inspect-image.outputs.digest }}
+          push-to-registry: true
