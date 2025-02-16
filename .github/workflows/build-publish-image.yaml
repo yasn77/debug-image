@@ -46,8 +46,10 @@ jobs:
         include:
           - platform: "linux/amd64"
             runs-on: ubuntu-22.04
+            base-image: nixery.dev/shell/busybox/curl/httpie/dig/git/mtr/dropbear/mise
           - platform: "linux/arm64"
             runs-on: ubuntu-22.04-arm
+            base-image: nixery.dev/arm64/shell/busybox/curl/httpie/dig/git/mtr/dropbear/mise
     runs-on: ${{ matrix.runs-on }}
     needs: image-metadata
     steps:
@@ -71,6 +73,8 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
+          build-args: |
+            BASE_IMAGE=${{ matrix.base-image }}
           labels: ${{ needs.image-metadata.outputs.labels }}
           annotations: ${{ needs.image-metadata.outputs.annotations }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
