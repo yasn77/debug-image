@@ -146,5 +146,5 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          subject-digest: ${{ steps.inspect-image.outputs.digest }}
+          subject-digest: sha256:${{ steps.inspect-image.outputs.digest }}
           push-to-registry: true
