@@ -31,7 +31,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           flavor: |
             latest=auto
-          tags: type=schedule
+          tags: |
+            type=schedule
             type=ref,event=branch
   build-image:
     permissions:
