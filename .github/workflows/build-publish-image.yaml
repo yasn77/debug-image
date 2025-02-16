@@ -96,8 +96,10 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
+      attestations: write
+      id-token: write
     needs:
       - image-metadata
       - build-image
