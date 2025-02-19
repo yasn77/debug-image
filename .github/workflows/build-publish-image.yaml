@@ -49,10 +49,10 @@ jobs:
         include:
           - platform: "linux/amd64"
             runs-on: ubuntu-22.04
-            base-image: nixery.dev/shell/busybox/curl/httpie/dig/git/mtr/dropbear/mise
+            base-image: nixery.dev/shell/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
           - platform: "linux/arm64"
             runs-on: ubuntu-22.04-arm
-            base-image: nixery.dev/arm64/shell/busybox/curl/httpie/dig/git/mtr/dropbear/mise
+            base-image: nixery.dev/arm64/shell/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
     runs-on: ${{ matrix.runs-on }}
     needs: image-metadata
     steps:

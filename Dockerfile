@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=nixery.dev/shell/busybox/curl/httpie/dig/git/mtr/dropbear/mise
+ARG BASE_IMAGE=nixery.dev/shell/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
 
 FROM $BASE_IMAGE
 
