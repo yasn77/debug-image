@@ -24,6 +24,8 @@ jobs:
       labels: ${{ steps.meta.outputs.labels }}
       annotations: ${{ steps.meta.outputs.annotations }}
       json: ${{ steps.meta.outputs.json }}
+      arm64-base-image: ${{ steps.get-base-image.outputs.arm64-base-image }}
+      amd64-base-image: ${{ steps.get-base-image.outputs.amd64-base-image }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,6 +39,13 @@ jobs:
           tags: |
             type=schedule
             type=ref,event=branch
+      - name: Define Base Image
+        id: get-base-image
+        run: |
+          ARM64_BASE_IMAGE="$(grep BASE_IMAGE= Dockerfile | sed -ne 's#.*\(nixery.dev/shell\)\(.*\)#\1/arm64\2#p')"
+          AMD64_BASE_IMAGE="$(grep BASE_IMAGE= Dockerfile | cut -d '=' -f2)"
+          echo "arm64-base-image=$ARM64_BASE_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "amd64-base-image=$AMD64_BASE_IMAGE" >> "$GITHUB_OUTPUT"
   build-image:
     permissions:
       contents: read
@@ -49,10 +58,10 @@ jobs:
         include:
           - platform: "linux/amd64"
             runs-on: ubuntu-22.04
-            base-image: nixery.dev/shell/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
+            base-image: ${{ needs.image-metadata.outputs.amd64-base-image }}
           - platform: "linux/arm64"
             runs-on: ubuntu-22.04-arm
-            base-image: nixery.dev/arm64/shell/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
+            base-image: ${{ needs.image-metadata.outputs.arm64-base-image }}
     runs-on: ${{ matrix.runs-on }}
     needs: image-metadata
     steps:
