@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=nixery.dev/shell/openssl/netcat/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
+ARG BASE_IMAGE=nixery.dev/shell/openssl/tcpdump/tmux/netcat/busybox/curl/httpie/dig/git/mtr/dropbear/docker-client/mise
 
 FROM $BASE_IMAGE
 
