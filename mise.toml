@@ -1,5 +1,5 @@
 [tools]
-github-cli = "2.74.2"
+github-cli = "2.76.1"
 jq = "1.7.1"
 "aqua:mikefarah/yq" = "4.45.4"
 kubectl = "latest"
