@@ -98,7 +98,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: debug-image-digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
@@ -117,7 +117,7 @@ jobs:
       - build-image
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: debug-image-digests-*
@@ -146,7 +146,7 @@ jobs:
           echo "artifact-name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
       - name: Save manifest as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.inspect-image.outputs.artifact-name }}
           path: /tmp/${{ steps.inspect-image.outputs.artifact-name }}
