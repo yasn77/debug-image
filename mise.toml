@@ -1,6 +1,6 @@
 [tools]
 github-cli = "2.89.0"
 jq = "1.8.1"
-"aqua:mikefarah/yq" = "4.52.5"
+"aqua:mikefarah/yq" = "4.53.2"
 kubectl = "latest"
 aws-cli = "latest"
